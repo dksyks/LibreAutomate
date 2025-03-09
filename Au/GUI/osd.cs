@@ -32,7 +32,7 @@ namespace Au.Types {
 		
 		/// <summary>
 		/// Redraws the OSD window immediately.
-		/// Does nothing it is not created or not visible.
+		/// Does nothing if it is not created or not visible.
 		/// </summary>
 		protected void Redraw() {
 			if (!Visible) return;
@@ -42,7 +42,7 @@ namespace Au.Types {
 		
 		/// <summary>
 		/// Sets to redraw the OSD window later.
-		/// Does nothing it is not created or not visible.
+		/// Does nothing if it is not created or not visible.
 		/// </summary>
 		protected void Invalidate() {
 			if (!Visible) return;
@@ -72,8 +72,8 @@ namespace Au.Types {
 		double _opacity = 1d;
 		
 		void _SetOpacity() {
-			if (_opacity > 0) Api.SetLayeredWindowAttributes(_w, 0, (byte)(uint)(_opacity * 255), 2);
-			else Api.SetLayeredWindowAttributes(_w, (uint)TransparentColor.ToBGR(), 0, 1);
+				if (_opacity > 0) Api.SetLayeredWindowAttributes(_w, 0, (byte)(uint)(_opacity * 255), 2);
+				else Api.SetLayeredWindowAttributes(_w, (uint)TransparentColor.ToBGR(), 0, 1);
 			
 			//never mind: when resizing an alpha-transparent window by moving the top-left corner, the opposite corner shakes.
 			//	It's a Windows problem, and I could not find a workaround.
@@ -157,17 +157,17 @@ namespace Au.Types {
 			
 			var es = WSE.TOOLWINDOW | WSE.TOPMOST | WSE.LAYERED | WSE.TRANSPARENT | WSE.NOACTIVATE;
 			if (ClickToClose) es &= ~WSE.TRANSPARENT;
-			_w = WndUtil.CreateWindow(WndProc, true, cn, Name, WS.POPUP, es); //note: don't set rect here: can be painting problems when resizing
+            _w = WndUtil.CreateWindow(WndProc, true, cn, Name, WS.POPUP, es); //note: don't set rect here: can be painting problems when resizing
 			_SetOpacity();
 			if (!_r.Is0) _w.SetWindowPos(SWPFlags.NOACTIVATE, _r.left, _r.top, _r.Width, _r.Height, SpecHWND.TOPMOST);
-		}
+        }
 		static byte s_isWinClassRegistered;
-		
-		/// <summary>
-		/// Called when the OSD window receives a message.
-		/// If your derived class overrides this function, it must call <c>base.WndProc</c> and return its return value, except when don't need default processing.
-		/// </summary>
-		protected virtual nint WndProc(wnd w, int message, nint wParam, nint lParam) {
+
+        /// <summary>
+        /// Called when the OSD window receives a message.
+        /// If your derived class overrides this function, it must call <c>base.WndProc</c> and return its return value, except when don't need default processing.
+        /// </summary>
+        protected virtual nint WndProc(wnd w, int message, nint wParam, nint lParam) {
 			switch (message) {
 			case Api.WM_NCDESTROY:
 				Api.PostMessage(default, 0, 0, 0); //stop waiting for a message. Never mind: not always need it.
@@ -180,7 +180,7 @@ namespace Au.Types {
 					var dc = bp.DC;
 					using var g = Graphics.FromHdc(dc);
 					if (_opacity == 0) g.Clear((Color)TransparentColor);
-					OnPaint(dc, g, bp.Rect);
+                    OnPaint(dc, g, bp.Rect);
 				}
 				return default;
 			case Api.WM_MOUSEACTIVATE:
@@ -212,14 +212,19 @@ namespace Au.Types {
 		/// This property cannot be changed after creating OSD window.
 		/// </remarks>
 		protected bool Shadow { get; set; }
-		
+
 		/// <summary>
-		/// If <c>true</c>, the OSD window receive mouse messages. Only completely transparent areas don't. The user can click to close the OSD (left, right or middle button).
+		/// If <c>true</c> (default), the OSD window will have a frame.
 		/// </summary>
-		/// <remarks>
-		/// This property cannot be changed after creating OSD window.
-		/// </remarks>
-		protected bool ClickToClose { get; set; }
+		protected bool Frame { get; set; } = true;
+
+        /// <summary>
+        /// If <c>true</c>, the OSD window receive mouse messages. Only completely transparent areas don't. The user can click to close the OSD (left, right or middle button).
+        /// </summary>
+        /// <remarks>
+        /// This property cannot be changed after creating OSD window.
+        /// </remarks>
+        protected bool ClickToClose { get; set; }
 		
 		/// <summary>
 		/// OSD window name. Optional, default <c>null</c>.
@@ -350,20 +355,26 @@ namespace Au {
 		public osdRect() {
 			Opacity = 0d;
 		}
-		
-		/// <summary>
-		/// Gets or sets rectangle color.
-		/// </summary>
-		/// <remarks>
-		/// This property can be changed after creating OSD window.
-		/// </remarks>
-		/// <example>
-		/// <code><![CDATA[
-		/// x.Color = 0xFF0000; //red
-		/// x.Color = System.Drawing.Color.Orange;
-		/// ]]></code>
-		/// </example>
-		public ColorInt Color {
+
+        /// <summary>
+        /// If <c>true</c> (default), the OSD window will have a frame.
+        /// </summary>
+        public new bool Frame { get => base.Frame; set => base.Frame = value; }
+
+
+        /// <summary>
+        /// Gets or sets rectangle color.
+        /// </summary>
+        /// <remarks>
+        /// This property can be changed after creating OSD window.
+        /// </remarks>
+        /// <example>
+        /// <code><![CDATA[
+        /// x.Color = 0xFF0000; //red
+        /// x.Color = System.Drawing.Color.Orange;
+        /// ]]></code>
+        /// </example>
+        public ColorInt Color {
 			get => _color;
 			set { if (value != _color) { _color = value; Redraw(); } }
 		}
@@ -389,7 +400,7 @@ namespace Au {
 			if (_rects == null) {
 				if (Opacity > 0) {
 					g.Clear((Color)_color);
-				} else {
+				} else if (Frame) {
 					g.DrawRectangleInset((Color)_color, _thickness, ra);
 				}
 			} else if (_rects.Length >= 0) {
@@ -583,14 +594,14 @@ namespace Au {
 			set { if (value != _borderColor) { _borderColor = value; Invalidate(); } }
 		}
 		private ColorInt _borderColor;
-		
-		/// <summary>
-		/// Background image.
-		/// </summary>
-		/// <remarks>
-		/// This property cannot be changed after creating OSD window.
-		/// </remarks>
-		public Image BackgroundImage { get; set; }
+
+        /// <summary>
+        /// Background image.
+        /// </summary>
+        /// <remarks>
+        /// This property cannot be changed after creating OSD window.
+        /// </remarks>
+        public Image BackgroundImage { get; set; }
 		
 		//public ImageLayout BackgroundImageLayout { get; set; } //FUTURE
 		
@@ -641,12 +652,17 @@ namespace Au {
 		public new bool Shadow { get => base.Shadow; set => base.Shadow = value; }
 		
 		/// <summary>
-		/// If <c>true</c>, the OSD window receive mouse messages. Only completely transparent areas don't. The user can click to close the OSD (left, right or middle button).
+		/// If <c>true</c> (default), the OSD window will have a frame.
 		/// </summary>
-		/// <remarks>
-		/// This property cannot be changed after creating OSD window.
-		/// </remarks>
-		public new bool ClickToClose { get => base.ClickToClose; set => base.ClickToClose = value; }
+		public new bool Frame { get => base.Frame; set => base.Frame = value; }
+
+        /// <summary>
+        /// If <c>true</c>, the OSD window receive mouse messages. Only completely transparent areas don't. The user can click to close the OSD (left, right or middle button).
+        /// </summary>
+        /// <remarks>
+        /// This property cannot be changed after creating OSD window.
+        /// </remarks>
+        public new bool ClickToClose { get => base.ClickToClose; set => base.ClickToClose = value; }
 		
 		/// <summary>
 		/// See <see cref="OsdMode"/>.
@@ -739,7 +755,7 @@ namespace Au {
 			return base.WndProc(w, message, wParam, lParam);
 		}
 #pragma warning restore CS1591 // Missing XML comment for publicly visible type or member
-		
+
 		/// <summary>
 		/// Draws OSD text etc.
 		/// </summary>
@@ -748,7 +764,7 @@ namespace Au {
 			if (Opacity != 0) {
 				g.Clear((Color)BackColor); //else OsdWindow cleared with TransparentColor
 				
-				if (BorderColor != BackColor) { //border
+				if ((BorderColor != BackColor) && Frame) { //border
 					g.DrawRectangleInset((Color)BorderColor, 1, r);
 					r.Inflate(-1, -1);
 				}
